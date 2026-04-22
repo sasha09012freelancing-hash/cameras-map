@@ -306,6 +306,7 @@ html = f"""<!DOCTYPE html>
       background:rgba(255,255,255,0.96); border-radius:10px;
       padding:10px 14px; box-shadow:0 2px 10px rgba(0,0,0,0.25);
       min-width:200px; max-width:240px;
+      max-height:calc(100vh - 20px); overflow-y:auto;
     }}
     #panel h3 {{ font-size:13px; color:#222; margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:6px; }}
     #panel label {{
