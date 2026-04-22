@@ -298,41 +298,60 @@ html = f"""<!DOCTYPE html>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     * {{ margin:0; padding:0; box-sizing:border-box; }}
-    html,body {{ height:100%; font-family:Arial,sans-serif; }}
+    html,body {{ height:100%; font-family:Arial,sans-serif; background:#1a1a2e; }}
     #map {{ width:100%; height:100vh; }}
 
     #panel {{
       position:fixed; top:10px; left:10px; z-index:1000;
-      background:rgba(255,255,255,0.96); border-radius:10px;
-      padding:10px 14px; box-shadow:0 2px 10px rgba(0,0,0,0.25);
-      min-width:200px; max-width:240px;
+      background:rgba(22,26,40,0.95); border-radius:12px;
+      padding:10px 14px; box-shadow:0 4px 20px rgba(0,0,0,0.5);
+      min-width:205px; max-width:240px;
       max-height:calc(100vh - 20px); overflow-y:auto;
+      border:1px solid rgba(255,255,255,0.08);
     }}
-    #panel h3 {{ font-size:13px; color:#222; margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:6px; }}
+    #panel h3 {{ font-size:13px; color:#e0e0e0; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px; }}
     #panel label {{
       display:flex; align-items:center; gap:7px;
-      font-size:12px; cursor:pointer; margin:5px 0; user-select:none;
+      font-size:12px; cursor:pointer; margin:5px 0; user-select:none; color:#ccc;
     }}
-    #panel input[type=checkbox] {{ width:14px; height:14px; cursor:pointer; }}
-    .dot {{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1.5px solid rgba(0,0,0,0.2); }}
-    .badge {{ font-size:10px; color:#888; margin-left:auto; }}
-    .sep {{ border-top:1px solid #eee; margin:7px 0; }}
+    #panel label:hover {{ color:#fff; }}
+    #panel input[type=checkbox] {{ width:14px; height:14px; cursor:pointer; accent-color:#4fc3f7; }}
+    .dot {{ width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1.5px solid rgba(255,255,255,0.25); }}
+    .badge {{ font-size:10px; color:#666; margin-left:auto; }}
+    .sep {{ border-top:1px solid rgba(255,255,255,0.08); margin:7px 0; }}
+
+    /* Tile switcher */
+    #tilebtn {{
+      position:fixed; top:10px; right:54px; z-index:1000;
+      background:rgba(22,26,40,0.95); border:1px solid rgba(255,255,255,0.1);
+      border-radius:10px; padding:6px 8px;
+      box-shadow:0 4px 15px rgba(0,0,0,0.4);
+      display:flex; gap:5px;
+    }}
+    #tilebtn button {{
+      border:none; border-radius:7px; padding:5px 10px;
+      font-size:11px; cursor:pointer; font-weight:600;
+      transition:all 0.2s;
+    }}
+    #tilebtn button.active {{ background:#4fc3f7; color:#000; }}
+    #tilebtn button:not(.active) {{ background:rgba(255,255,255,0.1); color:#aaa; }}
+    #tilebtn button:hover:not(.active) {{ background:rgba(255,255,255,0.2); color:#fff; }}
 
     #alert {{
       position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
       z-index:2000; background:#e53935; color:#fff;
       padding:12px 22px; border-radius:10px;
       font-size:15px; font-weight:bold;
-      box-shadow:0 3px 12px rgba(0,0,0,0.3);
+      box-shadow:0 3px 12px rgba(0,0,0,0.5);
       display:none; text-align:center; max-width:90vw;
     }}
     #locbtn {{
       position:fixed; bottom:20px; right:10px; z-index:1000;
-      background:#fff; border:none; border-radius:50%;
-      width:44px; height:44px; cursor:pointer;
-      box-shadow:0 2px 8px rgba(0,0,0,0.3); font-size:20px;
+      background:rgba(22,26,40,0.95); border:1px solid rgba(255,255,255,0.1);
+      border-radius:50%; width:44px; height:44px; cursor:pointer;
+      box-shadow:0 2px 10px rgba(0,0,0,0.4); font-size:20px;
     }}
-    .popup-title {{ font-weight:bold; font-size:13px; margin-bottom:5px; }}
+    .popup-title {{ font-weight:bold; font-size:13px; margin-bottom:5px; color:#111; }}
     .popup-row {{ font-size:12px; line-height:1.6; color:#333; }}
     .popup-row b {{ color:#111; }}
     .popup-region {{ font-size:11px; color:#888; margin-top:4px; }}
@@ -341,12 +360,21 @@ html = f"""<!DOCTYPE html>
       font-size:15px; font-weight:bold; border-radius:6px;
       padding:2px 10px; margin-bottom:6px;
     }}
+    /* Leaflet dark popup */
+    .leaflet-popup-content-wrapper {{ border-radius:10px; }}
   </style>
 </head>
 <body>
   <div id="map"></div>
+
+  <div id="tilebtn">
+    <button id="tile-dark" class="active" onclick="setTile('dark')">🌙 Тёмная</button>
+    <button id="tile-street" onclick="setTile('street')">🗺 Дороги</button>
+    <button id="tile-light" onclick="setTile('light')">☀️ Светлая</button>
+  </div>
+
   <div id="panel">
-    <h3>Камеры — Юг России</h3>
+    <h3>📷 Камеры — Юг России</h3>
     <label><input type="checkbox" id="chk-rostov" checked>
       <span class="dot" style="background:#e53935"></span>Ростовская обл.
       <span class="badge">{stats.get('rostov',0)}</span></label>
@@ -390,7 +418,7 @@ html = f"""<!DOCTYPE html>
       <span class="dot" style="background:#1abc9c"></span>Ингушетия
       <span class="badge">{stats.get('ingushetia',0)}</span></label>
     <div class="sep"></div>
-    <label><input type="checkbox" id="chk-warn" checked>Предупреждения (300м)</label>
+    <label><input type="checkbox" id="chk-warn" checked>⚠️ Предупреждения (300м)</label>
   </div>
   <div id="alert"></div>
   <button id="locbtn" title="Моё местоположение">📍</button>
@@ -401,12 +429,30 @@ html = f"""<!DOCTYPE html>
     const REGIONS = {regions_json};
     const WARN_RADIUS = 300;
 
+    const TILES = {{
+      dark:   {{ url:"https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}.png",   attr:"&copy; OpenStreetMap &copy; CARTO" }},
+      street: {{ url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{{z}}/{{y}}/{{x}}", attr:"&copy; Esri" }},
+      light:  {{ url:"https://{{s}}.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}.png", attr:"&copy; OpenStreetMap &copy; CARTO" }},
+    }};
+
     const map = L.map("map", {{zoomControl:false}}).setView([46.5, 38.5], 7);
     L.control.zoom({{position:"topright"}}).addTo(map);
-    L.tileLayer("https://{{s}}.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}.png", {{
-      attribution:'&copy; OpenStreetMap &copy; CARTO',
-      subdomains:"abcd", maxZoom:19
+
+    let currentTile = L.tileLayer(TILES.dark.url, {{
+      attribution: TILES.dark.attr, subdomains:"abcd", maxZoom:19
     }}).addTo(map);
+    let currentTileKey = "dark";
+
+    window.setTile = function(key) {{
+      map.removeLayer(currentTile);
+      currentTile = L.tileLayer(TILES[key].url, {{
+        attribution: TILES[key].attr, subdomains:"abcd", maxZoom:19
+      }}).addTo(map);
+      currentTile.bringToBack();
+      currentTileKey = key;
+      document.querySelectorAll("#tilebtn button").forEach(b => b.classList.remove("active"));
+      document.getElementById("tile-"+key).classList.add("active");
+    }};
 
     const layers = {{}};
     Object.keys(REGIONS).forEach(r => {{ layers[r] = L.layerGroup().addTo(map); }});
@@ -414,12 +460,12 @@ html = f"""<!DOCTYPE html>
     CAMERAS.forEach(cam => {{
       const color = REGIONS[cam.region] ? REGIONS[cam.region].color : "#999";
       const marker = L.circleMarker([cam.lat, cam.lon], {{
-        radius:7, fillColor:color, color:"#fff",
-        weight:2, opacity:1, fillOpacity:0.88
+        radius:7, fillColor:color, color:"rgba(0,0,0,0.4)",
+        weight:1.5, opacity:1, fillOpacity:0.92
       }});
       const regionName = REGIONS[cam.region] ? REGIONS[cam.region].name : cam.region;
       const speedBadge = cam.speed ? `<div><span class="speed-badge">${{cam.speed}} км/ч</span></div>` : '';
-      const osmLink = cam.osm_id ? `<div class="popup-region"><a href="https://www.openstreetmap.org/node/${{cam.osm_id}}" target="_blank">Источник: OpenStreetMap</a></div>` : '';
+      const osmLink = cam.osm_id ? `<div class="popup-region"><a href="https://www.openstreetmap.org/node/${{cam.osm_id}}" target="_blank">OpenStreetMap</a></div>` : '';
       const addrRow = cam.address ? `<div class="popup-row"><b>Адрес:</b> ${{cam.address}}</div>` : '';
       marker.bindPopup(`
         ${{speedBadge}}
@@ -476,7 +522,7 @@ html = f"""<!DOCTYPE html>
       const lat=pos.coords.latitude, lon=pos.coords.longitude;
       if (!userMarker) {{
         userMarker = L.circleMarker([lat,lon],{{
-          radius:8, fillColor:"#2979ff", color:"#fff", weight:3, fillOpacity:1
+          radius:8, fillColor:"#29b6f6", color:"#fff", weight:3, fillOpacity:1
         }}).addTo(map);
       }} else {{ userMarker.setLatLng([lat,lon]); }}
       checkNear(lat,lon);
@@ -487,9 +533,9 @@ html = f"""<!DOCTYPE html>
       if (watchId !== null) {{
         navigator.geolocation.clearWatch(watchId); watchId=null;
         if(userMarker){{ map.removeLayer(userMarker); userMarker=null; }}
-        document.getElementById("locbtn").style.background="#fff"; return;
+        document.getElementById("locbtn").style.background="rgba(22,26,40,0.95)"; return;
       }}
-      document.getElementById("locbtn").style.background="#e3f2fd";
+      document.getElementById("locbtn").style.background="#1a3a5c";
       navigator.geolocation.getCurrentPosition(p => {{
         map.setView([p.coords.latitude,p.coords.longitude],13); onPos(p);
       }}, err => alert("Ошибка геолокации: "+err.message));
